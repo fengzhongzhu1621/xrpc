@@ -1,0 +1,7 @@
+tox
+pytest
+pytest-cov
+pytest-asyncio
+pytest-sugar
+pytest-benchmark
+pytest-dependency

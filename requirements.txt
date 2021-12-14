@@ -1,0 +1,4 @@
+-f git+git://github.com/fengzhongzhu1621/xTool.git
+xTool
+pytest
+Cython
