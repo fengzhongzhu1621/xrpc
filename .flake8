@@ -1,0 +1,15 @@
+[flake8]
+exclude =
+    *.pyc,
+    .git,
+    .cover,
+    __pycache__,
+    */bin/*,
+    local/*
+    githooks/*
+max-line-length = 120
+max-complexity = 12
+format = pylint
+show_source = True
+statistics = True
+count = True
