@@ -1,0 +1,31 @@
+default_stages: [commit]
+repos:
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v2.29.1
+    hooks:
+      - id: pyupgrade
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+    - id: check-merge-conflict
+  - repo: https://github.com/psf/black
+    rev: 21.12b0
+    hooks:
+    - id: black
+      language_version: python3.6
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+        args: [ "--profile", "black" ]
+  - repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.5.7
+    hooks:
+    -   id: autopep8
+  - repo: local
+    hooks:
+      - id: check-commit-message
+        name: Check commit message
+        entry: python githooks/check_commit_message.py
+        language: system
+        stages: [commit-msg]
