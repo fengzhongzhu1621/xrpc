@@ -1,4 +1,7 @@
 [flake8]
+ignore =
+
+
 exclude =
     *.pyc,
     .git,

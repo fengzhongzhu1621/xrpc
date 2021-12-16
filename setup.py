@@ -94,7 +94,7 @@ if os.path.exists("requirements.txt"):
         for item in ["pexpect"]:
             try:
                 install_requires.remove(item)
-            except ValueError as e:
+            except ValueError:
                 pass
 
 install_requires.extend([])

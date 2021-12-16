@@ -13,10 +13,10 @@ repos:
     hooks:
       - id: isort
         args: [ "--profile", "black" ]
-  - repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v1.5.7
+  - repo: https://github.com/pycqa/flake8
+    rev: 4.0.1
     hooks:
-    -   id: autopep8
+      -   id: flake8
   - repo: local
     hooks:
       - id: check-commit-message
