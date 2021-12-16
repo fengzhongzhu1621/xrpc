@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import Callable
 
 from .plugin import Plugin
@@ -25,8 +23,6 @@ def register_plugin(
             obj, plugin_type, plugin_name, version, can_init_instance, *args, **kwargs
         )
         # 将插件添加到仓库
-        print("*" * 100)
-        print(plugin_type, plugin_name, plugin)
         DefaultPluginStore.add_plugin(plugin_type, plugin_name, plugin)
         return obj
 
@@ -51,7 +47,6 @@ def get_plugin_instance(plugin_type: str, plugin_name: str):
     if not plugin_instance:
         # 从缓存中获取插件类
         plugin = get_plugin(plugin_type, plugin_name)
-        print("plugin = ", plugin)
         if not plugin:
             return None
         # 创建插件实例

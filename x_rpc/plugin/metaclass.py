@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from .exceptions import PluginTypeNotFound
 from .plugin import Plugin
 from .store import DefaultPluginStore
