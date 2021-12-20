@@ -1,9 +1,31 @@
+import types
+from importlib import import_module
 from importlib.util import module_from_spec, spec_from_file_location
+from inspect import ismodule
 from os import environ as os_environ
+from pathlib import Path
 from re import findall as re_findall
 from typing import Union
 
-from x_rpc.exceptions import LoadFileException
+from x_rpc.exceptions import LoadFileException, PyFileError
+
+
+def import_string(module_name, package=None):
+    """按模块字符串加载
+    import a module or class by string path.
+
+    :module_name: str with path of module or path to import and
+    instantiate a class
+    :returns: a module object or one instance from class if
+    module_name is a valid path to class
+
+    """
+    module, klass = module_name.rsplit(".", 1)
+    module = import_module(module, package=package)
+    obj = getattr(module, klass)
+    if ismodule(obj):
+        return obj
+    return obj()
 
 
 def load_module_from_file_location(
@@ -41,34 +63,61 @@ def load_module_from_file_location(
     if isinstance(location, bytes):
         location = location.decode(encoding)
 
-    # A) Check if location contains any environment variables
-    #    in format ${some_env_var}.
-    # 获得路径中的参数
-    env_vars_in_location = set(re_findall(r"\${(.+?)}", location))
+    if isinstance(location, Path) or "/" in location or "$" in location:
 
-    # B) Check these variables exists in environment.
-    # 判断是否所有的变量是否在环境变量中定义
-    not_defined_env_vars = env_vars_in_location.difference(os_environ.keys())
-    if not_defined_env_vars:
-        raise LoadFileException(
-            "The following environment variables are not set: "
-            f"{', '.join(not_defined_env_vars)}"
-        )
+        if not isinstance(location, Path):
+            # A) Check if location contains any environment variables
+            #    in format ${some_env_var}.
+            # 获得路径中的参数
+            env_vars_in_location = set(re_findall(r"\${(.+?)}", location))
 
-    # C) Substitute them in location.
-    # 使用环境变量替换参数值
-    for env_var in env_vars_in_location:
-        location = location.replace("${" + env_var + "}", os_environ[env_var])
+            # B) Check these variables exists in environment.
+            # 判断是否所有的变量是否在环境变量中定义
+            not_defined_env_vars = env_vars_in_location.difference(os_environ.keys())
+            if not_defined_env_vars:
+                raise LoadFileException(
+                    "The following environment variables are not set: "
+                    f"{', '.join(not_defined_env_vars)}"
+                )
 
-    # 2) Load and return module.
-    # 获得文件名，去掉后缀，例如：a/b.c -> b
-    name = location.split("/")[-1].split(".")[
-        0
-    ]  # get just the file name without path and .py extension
-    # 创建模块
-    _mod_spec = spec_from_file_location(name, location, *args, **kwargs)
-    module = module_from_spec(_mod_spec)
-    # 导入模块
-    _mod_spec.loader.exec_module(module)  # type: ignore
+            # C) Substitute them in location.
+            # 使用环境变量替换参数值
+            for env_var in env_vars_in_location:
+                location = location.replace("${" + env_var + "}", os_environ[env_var])
 
-    return module
+        location = str(location)
+        if ".py" in location:
+            # 获得文件名，去掉后缀，例如：a / b.c -> b
+            name = location.split("/")[-1].split(".")[
+                0
+            ]  # get just the file name without path and .py extension
+            # 创建模块
+            _mod_spec = spec_from_file_location(
+                name, location, *args, **kwargs
+            )
+            assert _mod_spec is not None  # type assertion for mypy
+            module = module_from_spec(_mod_spec)
+            # 导入模块
+            _mod_spec.loader.exec_module(module)  # type: ignore
+        else:
+            module = types.ModuleType("config")
+            module.__file__ = str(location)
+            try:
+                with open(location) as config_file:
+                    exec(  # nosec
+                        compile(config_file.read(), location, "exec"),
+                        module.__dict__,
+                    )
+            except IOError as e:
+                e.strerror = "Unable to load configuration file (e.strerror)"
+                raise
+            except Exception as e:
+                raise PyFileError(location) from e
+
+        return module
+    else:
+        try:
+            # 按模块字符串加载
+            return import_string(location)
+        except ValueError:
+            raise IOError("Unable to load configuration %s" % str(location))

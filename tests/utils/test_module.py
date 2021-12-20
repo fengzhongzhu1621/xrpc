@@ -1,10 +1,27 @@
+import inspect
 from pathlib import Path
 from types import ModuleType
 
 import pytest
 
+from x_rpc.config import Config
 from x_rpc.exceptions import LoadFileException
-from x_rpc.utils.module import load_module_from_file_location
+from x_rpc.utils.module import import_string, load_module_from_file_location
+
+
+def test_import_string_class():
+    obj = import_string("x_rpc.config.Config")
+    assert isinstance(obj, Config)
+
+
+def test_import_string_module():
+    module = import_string("x_rpc.config.config")
+    assert inspect.ismodule(module)
+
+
+def test_import_string_exception():
+    with pytest.raises(ImportError):
+        import_string("test.test.test")
 
 
 def test_load_module_from_file_location_with_param(monkeypatch):
