@@ -32,7 +32,7 @@ class ConfigTest:
 
 def test_load_from_object():
     config = Config()
-    config.load(ConfigTest)
+    config.load_from_object(ConfigTest)
     assert "CONFIG_VALUE" in config
     assert config.CONFIG_VALUE == "should be used"
     assert "not_for_config" not in config
@@ -40,7 +40,7 @@ def test_load_from_object():
 
 def test_load_from_instance():
     config = Config()
-    config.load(ConfigTest())
+    config.load_from_object(ConfigTest())
     assert "CONFIG_VALUE" in config
     assert config.CONFIG_VALUE == "should be used"
     assert config.ANOTHER_VALUE == "should be used"
@@ -51,7 +51,7 @@ def test_load_from_instance():
 def test_load_from_object_string_exception():
     with pytest.raises(ImportError):
         config = Config()
-        config.load("test_config.Config.test")
+        config.load_from_path("test_config.Config.test")
 
 
 def test_auto_env_prefix():
@@ -114,7 +114,7 @@ def test_load_from_file():
     with temp_path() as config_path:
         config_path.write_text(other_config)
         config = Config()
-        config.load(str(config_path))
+        config.load_from_path(str(config_path))
         assert "VALUE" in config
         assert config.VALUE == "some value"
         assert "CONDITIONAL" in config
@@ -125,7 +125,7 @@ def test_load_from_file():
 def test_load_from_missing_file():
     with pytest.raises(IOError):
         config = Config()
-        config.load("non-existent file")
+        config.load_from_path("non-existent file")
 
 
 def test_load_from_envvar():
@@ -134,7 +134,7 @@ def test_load_from_envvar():
         config_path.write_text(other_config)
         environ["APP_CONFIG"] = str(config_path)
         config = Config()
-        config.load("${APP_CONFIG}")
+        config.load_from_path("${APP_CONFIG}")
         assert "VALUE" in config
         assert config.VALUE == "some value"
 
@@ -142,7 +142,7 @@ def test_load_from_envvar():
 def test_load_from_missing_envvar():
     with pytest.raises(IOError) as e:
         config = Config()
-        config.load("non-existent variable")
+        config.load_from_path("non-existent variable")
         assert str(e.value) == (
             "The environment variable 'non-existent "
             "variable' is not set and thus configuration "
@@ -157,7 +157,7 @@ def test_load_config_from_file_invalid_syntax():
 
         with pytest.raises(PyFileError):
             config = Config()
-            config.load(config_path)
+            config.load_from_path(config_path)
 
 
 def test_overwrite_exisiting_config():
@@ -167,7 +167,7 @@ def test_overwrite_exisiting_config():
     class OtherConfig:
         DEFAULT = 2
 
-    config.load(OtherConfig)
+    config.load_from_object(OtherConfig)
     assert config.DEFAULT == 2
 
 
@@ -178,7 +178,7 @@ def test_overwrite_exisiting_config_ignore_lowercase():
     class OtherConfig:
         default = 2
 
-    config.load(OtherConfig)
+    config.load_from_path(OtherConfig)
     assert config.default == 1
 
 
@@ -200,18 +200,23 @@ _test_setting_as_module = str(
     [
         _test_setting_as_dict,
         _test_setting_as_class,
-        _test_setting_as_module,
     ],
-    ids=["from_dict", "from_class", "from_file"],
+    ids=["from_dict", "from_class"],
 )
-def test_update(conf_object):
+def test_update_from_object(conf_object):
     config = Config()
-    config.update_config(conf_object)
+    config.load_from_object(conf_object)
+    assert config["TEST_SETTING_VALUE"] == 1
+
+
+def test_update_from_path():
+    config = Config()
+    config.load_from_path(_test_setting_as_module)
     assert config["TEST_SETTING_VALUE"] == 1
 
 
 def test_update_from_lowercase_key():
     d = {"test_setting_value": 1}
     config = Config()
-    config.update_config(d)
+    config.load_from_object(d)
     assert "test_setting_value" not in config

@@ -1,12 +1,11 @@
-from inspect import getmembers, isclass, isdatadescriptor
-from os import environ
+from inspect import getmembers, isdatadescriptor
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from x_rpc.utils.format import str_to_bool
-from x_rpc.utils.module import load_module_from_file_location
-
-XRPC_PREFIX = "XRPC_"
+from x_rpc.config.constants import XRPC_PREFIX
+from x_rpc.config.provider import ConfigProviderType
+from x_rpc.config.utils import parse_config_from_object
+from x_rpc.plugin import PluginType, get_plugin_instance
 
 
 class DescriptorMeta(type):
@@ -34,9 +33,14 @@ class Config(dict, metaclass=DescriptorMeta):
 
         # 根据前缀从环境变量加载配置
         if env_prefix and env_prefix != XRPC_PREFIX:
-            self.load_environment_vars(env_prefix)
+            options = {
+                "prefix": env_prefix,
+            }
         else:
-            self.load_environment_vars(XRPC_PREFIX)
+            options = {
+                "prefix": XRPC_PREFIX,
+            }
+        self.load_environment_vars(options)
 
     def __getattr__(self, attr):
         """使用点号获取实例属性，如果属性不存在就自动调用__getattr__方法 ."""
@@ -61,57 +65,26 @@ class Config(dict, metaclass=DescriptorMeta):
         """给key赋值 ."""
         self.update({attr: value})
 
-    def load_environment_vars(self, prefix=XRPC_PREFIX):
-        """
-        Looks for prefixed environment variables and applies them to the
-        configuration if present. This is called automatically when Sanic
-        starts up to load environment variables into config.
+    def load_environment_vars(self, options: Dict) -> None:
+        """从环境变量加载配置 ."""
+        provider = get_plugin_instance(PluginType.CONFIG_PROVIDER, ConfigProviderType.ENV)
+        provider.set_options(options)
+        env_config = provider.load()
+        self.update(env_config)
 
-        It will automatically hydrate the following types:
+    def load_from_object(self, obj):
+        if not isinstance(obj, (bytes, str, Path)):
+            config = parse_config_from_object(obj)
+            self.update(config)
 
-        - ``int``
-        - ``float``
-        - ``bool``
-
-        Anything else will be imported as a ``str``.
-        """
-        for key, value in environ.items():
-            if not key.startswith(prefix):
-                continue
-
-            _, config_key = key.split(prefix, 1)
-
-            # 注意类型转换顺序
-            for converter in (int, float, str_to_bool, str):
-                try:
-                    self[config_key] = converter(value)
-                    break
-                except ValueError:
-                    pass
-
-    def update_config(self, config: Union[bytes, str, dict, Any]):
-        """从其它配置源中获取配置 ."""
-        if isinstance(config, (bytes, str, Path)):
-            config = load_module_from_file_location(location=config)
-
-        if not isinstance(config, dict):
-            cfg = {}
-            if not isclass(config):
-                # 获得对象/模块的所有属性
-                cfg.update(
-                    {
-                        key: getattr(config, key)
-                        for key in config.__class__.__dict__.keys()
-                    }
-                )
-
-            # 获得类中的所有属性
-            config = dict(config.__dict__)
-            config.update(cfg)
-
-        # 只保留大写的属性
-        config = dict(filter(lambda i: i[0].isupper(), config.items()))
-
-        self.update(config)
-
-    load = update_config
+    def load_from_path(self, path: Union[bytes, str, dict, Any]) -> None:
+        """从指定路径获取配置 ."""
+        if isinstance(path, (bytes, str, Path)):
+            provider = get_plugin_instance(PluginType.CONFIG_PROVIDER, ConfigProviderType.PATH)
+            options = {
+                "location": path,
+                "encoding": "utf8",
+            }
+            provider.set_options(options)
+            config = provider.load()
+            self.update(config)

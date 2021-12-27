@@ -28,6 +28,64 @@ def import_string(module_name, package=None):
     return obj()
 
 
+def load_module_from_path(location: Union[bytes, str], encoding: str = "utf8", *args, **kwargs):
+    # 1) Parse location.
+    # 文件路径转换为str类型
+    if isinstance(location, bytes):
+        location = location.decode(encoding)
+
+    if not isinstance(location, Path):
+        # A) Check if location contains any environment variables
+        #    in format ${some_env_var}.
+        # 获得路径中的参数
+        env_vars_in_location = set(re_findall(r"\${(.+?)}", location))
+
+        # B) Check these variables exists in environment.
+        # 判断是否所有的变量是否在环境变量中定义
+        not_defined_env_vars = env_vars_in_location.difference(os_environ.keys())
+        if not_defined_env_vars:
+            raise LoadFileException(
+                "The following environment variables are not set: "
+                f"{', '.join(not_defined_env_vars)}"
+            )
+
+        # C) Substitute them in location.
+        # 使用环境变量替换参数值
+        for env_var in env_vars_in_location:
+            location = location.replace("${" + env_var + "}", os_environ[env_var])
+
+    location = str(location)
+    if ".py" in location:
+        # 获得文件名，去掉后缀，例如：a / b.c -> b
+        name = location.split("/")[-1].split(".")[
+            0
+        ]  # get just the file name without path and .py extension
+        # 创建模块
+        _mod_spec = spec_from_file_location(
+            name, location, *args, **kwargs
+        )
+        assert _mod_spec is not None  # type assertion for mypy
+        module = module_from_spec(_mod_spec)
+        # 导入模块
+        _mod_spec.loader.exec_module(module)  # type: ignore
+    else:
+        module = types.ModuleType("config")
+        module.__file__ = str(location)
+        try:
+            with open(location) as config_file:
+                exec(  # nosec
+                    compile(config_file.read(), location, "exec"),
+                    module.__dict__,
+                )
+        except IOError as e:
+            e.strerror = "Unable to load configuration file (e.strerror)"
+            raise
+        except Exception as e:
+            raise PyFileError(location) from e
+
+    return module
+
+
 def load_module_from_file_location(
     location: Union[bytes, str], encoding: str = "utf8", *args, **kwargs
 ):
@@ -64,56 +122,7 @@ def load_module_from_file_location(
         location = location.decode(encoding)
 
     if isinstance(location, Path) or "/" in location or "$" in location:
-
-        if not isinstance(location, Path):
-            # A) Check if location contains any environment variables
-            #    in format ${some_env_var}.
-            # 获得路径中的参数
-            env_vars_in_location = set(re_findall(r"\${(.+?)}", location))
-
-            # B) Check these variables exists in environment.
-            # 判断是否所有的变量是否在环境变量中定义
-            not_defined_env_vars = env_vars_in_location.difference(os_environ.keys())
-            if not_defined_env_vars:
-                raise LoadFileException(
-                    "The following environment variables are not set: "
-                    f"{', '.join(not_defined_env_vars)}"
-                )
-
-            # C) Substitute them in location.
-            # 使用环境变量替换参数值
-            for env_var in env_vars_in_location:
-                location = location.replace("${" + env_var + "}", os_environ[env_var])
-
-        location = str(location)
-        if ".py" in location:
-            # 获得文件名，去掉后缀，例如：a / b.c -> b
-            name = location.split("/")[-1].split(".")[
-                0
-            ]  # get just the file name without path and .py extension
-            # 创建模块
-            _mod_spec = spec_from_file_location(
-                name, location, *args, **kwargs
-            )
-            assert _mod_spec is not None  # type assertion for mypy
-            module = module_from_spec(_mod_spec)
-            # 导入模块
-            _mod_spec.loader.exec_module(module)  # type: ignore
-        else:
-            module = types.ModuleType("config")
-            module.__file__ = str(location)
-            try:
-                with open(location) as config_file:
-                    exec(  # nosec
-                        compile(config_file.read(), location, "exec"),
-                        module.__dict__,
-                    )
-            except IOError as e:
-                e.strerror = "Unable to load configuration file (e.strerror)"
-                raise
-            except Exception as e:
-                raise PyFileError(location) from e
-
+        module = load_module_from_path(location, *args, **kwargs)
         return module
     else:
         try:

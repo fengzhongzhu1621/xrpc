@@ -4,7 +4,6 @@ class Plugin:
         cls,
         plugin_type: str,
         plugin_name: str,
-        version: str = "",
         can_init_instance: bool = True,
         *args,
         **kwargs
@@ -15,8 +14,6 @@ class Plugin:
         self.name = plugin_name
         # 插件类型
         self.type = plugin_type
-        # 插件的版本
-        self.version = version
         # 对象可以初始化
         self.can_init_instance = can_init_instance
         self.args = args

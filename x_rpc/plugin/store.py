@@ -27,9 +27,5 @@ class PluginStore:
     def get_all_plugin(self) -> Dict:
         return self.plugins
 
-    def destroy_plugins(self) -> None:
-        self.plugins = {}
-        self.plugin_instances = {}
-
 
 DefaultPluginStore = PluginStore()
