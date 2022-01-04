@@ -32,6 +32,7 @@ class EnvConfigProvider(BaseConfigProvider):
         Anything else will be imported as a ``str``.
         """
         config = {}
+        converters = (int, float, str_to_bool, str)
         for key, value in environ.items():
             # 过滤前缀
             if not key.startswith(self.prefix):
@@ -39,7 +40,7 @@ class EnvConfigProvider(BaseConfigProvider):
             # 获得配置key
             _, config_key = key.split(self.prefix, 1)
             # 将配置值转换为指定类型，注意类型转换顺序
-            for converter in (int, float, str_to_bool, str):
+            for converter in converters:
                 try:
                     config[config_key] = converter(value)
                     break

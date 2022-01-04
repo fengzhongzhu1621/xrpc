@@ -220,3 +220,18 @@ def test_update_from_lowercase_key():
     config = Config()
     config.load_from_object(d)
     assert "test_setting_value" not in config
+
+
+def test_setter():
+    class SetterConfig(Config):
+        @property
+        def a(self) -> str:
+            return self.b
+
+        @a.setter
+        def a(self, value):
+            self.b = value + 1
+
+    config = SetterConfig()
+    config.a = 1
+    assert config.b == 2
