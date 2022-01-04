@@ -1,5 +1,5 @@
 import collections
-import enum
+from enum import Enum
 from typing import Dict, Tuple
 
 __all__ = [
@@ -10,7 +10,7 @@ __all__ = [
 ChoicesValue = collections.namedtuple("choices_value", ["id", "name"])
 
 
-class ChoicesEnum(enum.Enum):
+class ChoicesEnum(Enum):
 
     @classmethod
     def _get_members(cls):
