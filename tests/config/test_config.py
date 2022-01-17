@@ -7,7 +7,7 @@ from textwrap import dedent
 import pytest
 
 from x_rpc.config import Config
-from x_rpc.exceptions import PyFileError
+from x_rpc.exceptions import PyFileException
 
 
 @contextmanager
@@ -155,7 +155,7 @@ def test_load_config_from_file_invalid_syntax():
     with temp_path() as config_path:
         config_path.write_text(config)
 
-        with pytest.raises(PyFileError):
+        with pytest.raises(PyFileException):
             config = Config()
             config.load_from_path(config_path)
 

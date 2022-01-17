@@ -7,7 +7,7 @@ from pathlib import Path
 from re import findall as re_findall
 from typing import Union
 
-from x_rpc.exceptions import LoadFileException, PyFileError
+from x_rpc.exceptions import LoadFileException, PyFileException
 
 
 def import_string(module_name, package=None):
@@ -81,7 +81,7 @@ def load_module_from_path(location: Union[bytes, str], encoding: str = "utf8", *
             e.strerror = "Unable to load configuration file (e.strerror)"
             raise
         except Exception as e:
-            raise PyFileError(location) from e
+            raise PyFileException(location) from e
 
     return module
 

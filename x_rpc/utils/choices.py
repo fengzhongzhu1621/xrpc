@@ -1,3 +1,7 @@
+"""
+选择枚举，用于对常量进行处理
+"""
+
 import collections
 from enum import Enum
 from typing import Dict, Tuple
